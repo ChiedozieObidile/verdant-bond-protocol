@@ -16,9 +16,17 @@ import { RequestLoggingInterceptor } from './common/interceptors/request-logging
 import { RateLimitGuard } from './common/guards/rate-limit.guard';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
 import { TelemetryInterceptor } from './common/interceptors/telemetry.interceptor';
+import { QuotaGuard } from './common/guards/quota.guard';
 import { WorkersModule } from './workers/workers.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { ExportsModule } from './exports/exports.module';
+import { ComplianceModule } from './compliance/compliance.module';
+import { AuditModule } from './audit/audit.module';
+import { RecoveryModule } from './recovery/recovery.module';
+import { MigrationSafetyModule } from './migrations/migration-safety.module';
+import { ImpersonationModule } from './impersonation/impersonation.module';
+import { InvitationsModule } from './invitations/invitations.module';
+import { FailuresModule } from './failures/failures.module';
 
 @Module({
   imports: [
@@ -36,6 +44,13 @@ import { ExportsModule } from './exports/exports.module';
     WorkersModule,
     ReconciliationModule,
     ExportsModule,
+    ComplianceModule,
+    AuditModule,
+    RecoveryModule,
+    MigrationSafetyModule,
+    ImpersonationModule,
+    InvitationsModule,
+    FailuresModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: Rfc7807ExceptionFilter },
@@ -43,6 +58,7 @@ import { ExportsModule } from './exports/exports.module';
     { provide: APP_INTERCEPTOR, useClass: TelemetryInterceptor },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
     { provide: APP_GUARD, useClass: RateLimitGuard },
+    { provide: APP_GUARD, useClass: QuotaGuard },
   ],
 })
 export class AppModule {}

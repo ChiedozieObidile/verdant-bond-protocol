@@ -15,6 +15,31 @@ export class AuthService {
    *  auth/guards/wallet-auth.guard.ts). */
   readonly sessionReady = computed(() => this.isAuthenticated() && this.walletService.isConnected());
 
+  readonly userProfile = computed(() => {
+    const t = this.token();
+    if (!t) return null;
+    try {
+      const payload = JSON.parse(atob(t.split('.')[1]));
+      return {
+        walletAddress: payload.sub,
+        roles: payload.roles || [],
+        permissions: payload.permissions || []
+      };
+    } catch {
+      return null;
+    }
+  });
+
+  hasPermission(permission: string): boolean {
+    const profile = this.userProfile();
+    return profile ? profile.permissions.includes(permission) : false;
+  }
+  
+  hasRole(role: string): boolean {
+    const profile = this.userProfile();
+    return profile ? profile.roles.includes(role) : false;
+  }
+
   private isRetryableChallengeError(err: unknown): boolean {
     if (!(err instanceof HttpErrorResponse)) return false;
     const detail =
