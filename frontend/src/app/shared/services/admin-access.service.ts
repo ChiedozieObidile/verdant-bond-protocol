@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { StrKey } from '@stellar/stellar-base';
+import { StrKey } from '@stellar/stellar-sdk';
 import { WalletService } from '../../auth/wallet.service';
 import { AuthService } from '../../auth/auth.service';
 import { environment } from '../../../environments/environment';
@@ -26,8 +26,15 @@ export class AdminAccessService {
 
   readonly isConfigured = computed(() => this.adminAddress() !== null);
   
+  // Admin UI requires the configured admin wallet (#167/#168) AND a session
+  // whose token carries the maintainer role (#228). The API enforces the same.
   readonly isAdmin = computed(() => {
-    return this.authService.hasRole('maintainer');
+    const admin = this.adminAddress();
+    return (
+      admin !== null &&
+      this.walletService.address() === admin &&
+      this.authService.hasRole('maintainer')
+    );
   });
 
   constructor() {}

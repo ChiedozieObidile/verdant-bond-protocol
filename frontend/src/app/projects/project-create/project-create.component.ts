@@ -1,7 +1,7 @@
 import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { ApiService } from '../../shared/services/api.service';
 import { appErrorMessage } from '../../shared/errors/api-error';
 import { PendingTransactionsService } from '../../shared/services/pending-transactions.service';
@@ -11,6 +11,12 @@ import {
   latitudeRangeValidator,
   longitudeRangeValidator,
 } from '../../shared/validators/project-metadata.validators';
+
+/** Accepts only one of `allowed` (empty values are left to `required`). */
+function oneOf(allowed: readonly string[]): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null =>
+    !control.value || allowed.includes(control.value) ? null : { oneOf: { allowed } };
+}
 
 @Component({
   selector: 'app-project-create',
@@ -169,7 +175,7 @@ export class ProjectCreateComponent {
 
   form: FormGroup = this.fb.group({
     name: ['', Validators.required],
-    methodology: ['', Validators.required],
+    methodology: ['', [Validators.required, oneOf(METHODOLOGY_CODES)]],
     country: ['', [Validators.required, countryCodeValidator()]],
     totalAreaHa: [null, [Validators.required, Validators.min(0.01)]],
     carbonSequestrationEstimate: [null, [Validators.required, Validators.min(0.01)]],

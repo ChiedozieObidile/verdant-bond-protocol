@@ -92,7 +92,14 @@ describe('BondDetailComponent (issue #4 refresh model)', () => {
           useValue: { snapshot: { paramMap: { get: () => '1' } } },
         },
         { provide: ApiService, useValue: apiService },
-        { provide: AuthService, useValue: { sessionReady } },
+        {
+          provide: AuthService,
+          // RBAC (#228): the connected admin wallet's token carries the maintainer role.
+          useValue: {
+            sessionReady,
+            hasRole: (role: string) => role === 'maintainer' && walletService?.address() === ADMIN_ADDRESS,
+          },
+        },
         WalletService,
       ],
     }).compileComponents();

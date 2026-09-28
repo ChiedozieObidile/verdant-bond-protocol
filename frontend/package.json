@@ -20,7 +20,6 @@
     "@angular/platform-browser-dynamic": "^18.0.0",
     "@angular/router": "^18.0.0",
     "@stellar/freighter-api": "^6.0.1",
-    "@stellar/stellar-base": "^12.1.1",
     "@stellar/stellar-sdk": "^12.0.0",
     "baseline-browser-mapping": "^2.10.37",
     "dompurify": "^3.4.16",

@@ -28,7 +28,13 @@ describe('route guards (issue #168)', () => {
         { provide: FREIGHTER_API, useValue: {} },
         {
           provide: AuthService,
-          useValue: { isAuthenticated: () => authenticated },
+          // A signed-in session's token carries the maintainer role (#228) only
+          // for the deployment's admin key.
+          useValue: {
+            isAuthenticated: () => authenticated,
+            hasRole: (role: string) =>
+              authenticated && role === 'maintainer' && wallet.address() === ADMIN_ADDRESS,
+          },
         },
       ],
     });
