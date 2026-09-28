@@ -5,7 +5,7 @@ import {
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
-import { ProjectResponse, ProjectProvenanceResponse } from './interfaces/project.interface';
+import { ProjectResponse, ProjectProvenanceResponse, CertificationVersion, CouponCertification } from './interfaces/project.interface';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
@@ -83,5 +83,30 @@ export class ProjectsController {
   ): Promise<any> {
     const auditorAddress = req.user?.walletAddress || '';
     return this.projectsService.exportProject(id, auditorAddress);
+  }
+
+  @Post(':id/certifications')
+  @HttpCode(HttpStatus.CREATED)
+  async addCertification(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { cid: string; kind?: 'performance-report' | 'third-party-certification' | 'document' },
+  ): Promise<CertificationVersion> {
+    return this.projectsService.addCertification(id, body.cid, body.kind ?? 'document');
+  }
+
+  @Get(':id/certifications')
+  async certificationHistory(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<CertificationVersion[]> {
+    return this.projectsService.getCertificationHistory(id);
+  }
+
+  @Get(':id/coupon-certification')
+  async couponCertification(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('bondId', ParseIntPipe) bondId: number,
+    @Query('periodIndex', ParseIntPipe) periodIndex: number,
+  ): Promise<CouponCertification> {
+    return this.projectsService.getCouponCertification(id, bondId, periodIndex);
   }
 }

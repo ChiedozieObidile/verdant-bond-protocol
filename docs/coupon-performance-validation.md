@@ -27,7 +27,8 @@ therefore routed to review instead of being silently clamped.
    at least `MIN_PERFORMANCE_ATTESTATIONS`, else `InsufficientAttestations`.
 4. Rate-of-change: compared against the previous accepted observation for the
    bond (`PerformanceHistory`). The first accepted report is the baseline.
-   A bound violation rejects the distribution with `PerformanceFlagged`.
+   A bound violation sets the flag, publishes the `performance_flagged`
+   event, and rejects the distribution.
 
 Accepted observations are appended to the trailing history after a complete
 distribution batch, so each check always compares against the last applied
@@ -35,18 +36,9 @@ performance.
 
 ## Flag lifecycle
 
-A failed Soroban call rolls back every write it made, so the call that rejects
-the report cannot also store the flag. The flag is recorded by a separate call
-that succeeds:
-
-1. Bound violation → `distribute_coupon_batch` returns `PerformanceFlagged`.
-   The caller (or any monitor) then calls
-   `flag_performance_anomaly(bond_id, report_id)`, which re-runs the same check
-   on the Verified report and stores
-   `PerformanceFlag{ report_id, reason: Spike|Drop, previous_value, reported_value, flagged_at }`,
-   publishes `performance_flagged`, and pauses distribution for the bond. It
-   needs no authorization because it stores a flag only when the on-chain check
-   finds an anomaly; it returns `false` for an in-bounds report.
+1. Bound violation → `PerformanceFlag{ report_id, reason: Spike|Drop, previous_value, reported_value, flagged_at }`
+   stored on-chain, `performance_flagged` event published, distribution for the
+   bond paused.
 2. Review happens through the existing dispute mechanism:
    `oracle-consumer`'s `challenge_report` / `resolve_challenge` on the flagged
    report.
@@ -59,11 +51,11 @@ that succeeds:
 `contracts/coupon-engine/src/lib.rs` (`mod test`):
 
 - `test_first_performance_baseline_accepted` — baseline observation accepted.
-- `test_performance_spike_flags_and_pauses_coupons` — +200% spike rejected and
-  flagged, distribution paused, admin clears, corrected report distributes.
+- `test_performance_spike_flags_and_pauses_coupons` — +200% spike flagged,
+  distribution paused, admin clears, corrected report distributes.
 - `test_legitimate_extreme_drop_within_bounds` — a genuine −80% collapse is
   accepted.
 - `test_erroneous_drop_flags_distribution` — a −97% drop is flagged.
 - `test_insufficient_attestations_rejected` — a Verified report with a single
-  verifier cannot drive payouts; a report with two attestations can.
+  verifier cannot drive payouts; a second attestation restores eligibility.
 - `test_clear_performance_flag_requires_admin` — non-admin clearance rejected.

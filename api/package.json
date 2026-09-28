@@ -68,6 +68,9 @@
       "ts"
     ],
     "rootDir": "src",
+    "testRegex": ".*\\.(spec|test)\\.ts$",
+    "transform": { "^.+\\.ts$": "ts-jest" },
+    "collectCoverageFrom": ["**/*.ts"],
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.ts$": "ts-jest"
