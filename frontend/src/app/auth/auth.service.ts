@@ -72,7 +72,7 @@ export class AuthService {
     let attempt = 0;
     const maxAttempts = 2;
 
-    while (true) {
+    for (;;) {
       attempt += 1;
       const { challenge } = await this.challengeFor(address);
       const signedChallenge = await this.walletService.signChallenge(challenge);

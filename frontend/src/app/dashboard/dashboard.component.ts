@@ -9,7 +9,7 @@ import { BondCardComponent } from '../shared/components/bond-card/bond-card.comp
 import { ProjectCardComponent } from '../shared/components/project-card/project-card.component';
 import { LoadingSpinnerComponent } from '../shared/components/loading-spinner/loading-spinner.component';
 import { AccessibleChartComponent, ChartDatum } from '../shared/components/accessible-chart/accessible-chart.component';
-import { Bond, Project, PaginatedResponse } from '../shared/interfaces/bond.interface';
+import { Bond, Project, PaginatedResponse, PortfolioResponse } from '../shared/interfaces/bond.interface';
 import { appErrorMessage } from '../shared/errors/api-error';
 
 export const DASHBOARD_RETRY_COUNT = 3;
@@ -273,7 +273,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly projects = signal<Project[]>([]);
 
   // Wallet-scoped aggregate portfolio (#116).
-  readonly portfolio = signal<any | null>(null);
+  readonly portfolio = signal<PortfolioResponse | null>(null);
   readonly portfolioState = signal<SectionState>('loading');
   readonly portfolioError = signal('');
 

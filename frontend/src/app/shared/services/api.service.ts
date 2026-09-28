@@ -13,6 +13,7 @@ import {
   QuoteAsset, DepositQuoteDto, WithdrawQuoteDto, HolderResponse,
   ClaimableCreditDetail, ClaimableCreditsResponse,
   HolderListResponse, CouponDistributionResponse, TransactionStatusResponse,
+  PortfolioResponse,
 } from '../interfaces/bond.interface';
 
 export interface ProblemDetails {
@@ -377,11 +378,11 @@ export class ApiService {
     return this.withProblemDetails(this.http.post<QuoteTransactionResponse>('/api/marketplace/withdraw', data, { headers }));
   }
 
-  getPortfolio(address?: string, force = false): Observable<any> {
+  getPortfolio(address?: string, force = false): Observable<PortfolioResponse> {
     let params = new HttpParams();
     if (address) params = params.set('address', address);
     if (force) params = params.set('force', 'true');
-    return this.withProblemDetails(this.http.get<any>('/api/portfolio', {
+    return this.withProblemDetails(this.http.get<PortfolioResponse>('/api/portfolio', {
       params,
       headers: this.headers(),
     }));

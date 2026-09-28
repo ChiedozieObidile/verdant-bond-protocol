@@ -159,6 +159,8 @@ export class ProjectCreateComponent {
   private readonly router = inject(Router);
   private readonly pendingTx = inject(PendingTransactionsService);
 
+  readonly methodologyCodes = METHODOLOGY_CODES;
+
   readonly submitting = signal(false);
   readonly error = signal('');
   readonly boundaryError = signal('');

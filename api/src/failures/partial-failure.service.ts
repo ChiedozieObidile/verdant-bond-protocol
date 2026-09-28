@@ -26,7 +26,7 @@ function remediationDoc(operationType: string): string {
  * case-insensitive on the whole key name.
  */
 const SECRET_KEY_PATTERN =
-  /secret|password|privatekey|private_key|seed|mnemonic|token|apikey|api_key/i;
+  /secret|password|passphrase|privatekey|private_key|seed|mnemonic|token|apikey|api_key/i;
 
 function scrub(value: unknown, depth = 0): unknown {
   if (depth > 6) return '[truncated]';

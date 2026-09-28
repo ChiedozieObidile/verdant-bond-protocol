@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
-import { AuditRecord } from './interfaces/audit.interface';
+import { AuditRecord } from './audit.interface';
 
 /**
  * Durable, Redis-independent row store for the audit chain (issue #260).

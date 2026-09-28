@@ -121,8 +121,8 @@ export interface SeedDataset {
  * - 10 oracle reports covering all report statuses, including a stale pending
  *   report so the monitoring view has something to surface.
  */
-export function buildSeedDataset(): SeedDataset {
-  const now = Date.now();
+/** `now` anchors the relative dates; the same `now` always gives the same dataset. */
+export function buildSeedDataset(now: number = Date.now()): SeedDataset {
 
   const users: SeedUser[] = [
     { id: 1, address: 1, role: 'admin', name: 'Protocol Admin' },

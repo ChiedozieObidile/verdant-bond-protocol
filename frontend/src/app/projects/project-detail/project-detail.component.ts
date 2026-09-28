@@ -8,6 +8,7 @@ import { ChallengedReportsComponent } from '../challenged-reports/challenged-rep
 import { Project, ProjectProvenanceEvent } from '../../shared/interfaces/bond.interface';
 import { forkJoin } from 'rxjs';
 import { AdminAccessService } from '../../shared/services/admin-access.service';
+import { appErrorMessage } from '../../shared/errors/api-error';
 
 @Component({
   selector: 'app-project-detail',
@@ -128,6 +129,7 @@ import { AdminAccessService } from '../../shared/services/admin-access.service';
 export class ProjectDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly apiService = inject(ApiService);
+  readonly adminAccess = inject(AdminAccessService);
 
   readonly project = signal<Project | null>(null);
   readonly loading = signal(true);
@@ -146,6 +148,10 @@ export class ProjectDetailComponent implements OnInit {
       this.loading.set(false);
       return;
     }
+    this.loadProject(id);
+  }
+
+  private loadProject(id: number): void {
     forkJoin({ project: this.apiService.getProject(id), provenance: this.apiService.getProjectProvenance(id) }).subscribe({
       next: ({ project, provenance }) => {
         this.project.set(project);
@@ -160,10 +166,11 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   onApprove(): void {
-    if (!confirm('Approve project #'' + this.project()?.id + '?')) return;
-    this.apiService.approveProject(this.project()!.id).subscribe({
+    const id = this.project()?.id;
+    if (id === undefined || !confirm(`Approve project #${id}?`)) return;
+    this.apiService.approveProject(id).subscribe({
       next: () => {
-        this.loadProjects();
+        this.loadProject(id);
       },
       error: (err) => {
         this.error.set(appErrorMessage(err, 'Approve failed'));
@@ -172,10 +179,11 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   onReject(): void {
-    if (!confirm('Reject project #'' + this.project()?.id + '?')) return;
-    this.apiService.rejectProject(this.project()!.id).subscribe({
+    const id = this.project()?.id;
+    if (id === undefined || !confirm(`Reject project #${id}?`)) return;
+    this.apiService.rejectProject(id).subscribe({
       next: () => {
-        this.loadProjects();
+        this.loadProject(id);
       },
       error: (err) => {
         this.error.set(appErrorMessage(err, 'Reject failed'));

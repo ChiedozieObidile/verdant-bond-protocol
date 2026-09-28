@@ -661,12 +661,17 @@ mod integration {
             contracts
                 .ce_client
                 .register_bond(&admin, &bond_id, &project_id, &0);
+            // This test is about challenges, not the #186 attestation minimum:
+            // the report has a single verifier, so accept one attestation.
+            contracts
+                .ce_client
+                .set_min_performance_attestations(&admin, &1, &1);
 
             let holders = soroban_sdk::vec![&env, bob.clone()];
 
             let ok = contracts
                 .ce_client
-                .distribute_coupon(&admin, &bond_id, &0, &holders, &report_id, &1);
+                .distribute_coupon(&admin, &bond_id, &0, &holders, &report_id, &2);
             assert!(ok.total_credits > 0);
 
             contracts.oc_client.challenge_report(
@@ -682,7 +687,7 @@ mod integration {
 
             let blocked = contracts
                 .ce_client
-                .try_distribute_coupon(&admin, &bond_id, &1, &holders, &report_id, &2);
+                .try_distribute_coupon(&admin, &bond_id, &1, &holders, &report_id, &3);
             assert_eq!(blocked, Err(Ok(BondError::ReportNotVerified)));
 
             contracts
@@ -695,7 +700,7 @@ mod integration {
 
             let retry = contracts
                 .ce_client
-                .distribute_coupon(&admin, &bond_id, &1, &holders, &report_id, &2);
+                .distribute_coupon(&admin, &bond_id, &1, &holders, &report_id, &3);
             assert!(retry.total_credits > 0);
 
             let provider = contracts.oc_client.get_provider(&oracle);

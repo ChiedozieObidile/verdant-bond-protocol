@@ -35,7 +35,6 @@ pub const TRAILING_HISTORY_PERIODS: u32 = 8;
 /// layout or interface change; see docs/upgrade-migrations.md.
 pub const SCHEMA_VERSION: u32 = 1;
 
-
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
@@ -142,7 +141,6 @@ pub struct MigrationWindow {
     pub snapshot_undistributed: i128,
     pub snapshot_period_count: u32,
 }
-
 
 #[contract]
 pub struct CouponEngine;
@@ -290,7 +288,11 @@ impl CouponEngine {
         // Issue #186: an active flag pauses automatic coupon distribution for
         // this bond until an admin clears it after dispute resolution — a
         // flagged update is never silently clamped.
-        if env.storage().instance().has(&DataKey::PerformanceFlag(bond_id)) {
+        if env
+            .storage()
+            .instance()
+            .has(&DataKey::PerformanceFlag(bond_id))
+        {
             return Err(BondError::PerformanceFlagged);
         }
 
@@ -312,14 +314,13 @@ impl CouponEngine {
         }
 
         // Issue #186: bound the report against the trailing history before it
-        // can affect any payout math.
-        validate_performance_update(
-            &env,
-            bond_id,
-            report_id,
-            period_index,
-            report.carbon_sequestered,
-        )?;
+        // can affect any payout math. The rejection cannot store the flag (a
+        // failed call rolls back); `flag_performance_anomaly` records it.
+        if detect_performance_anomaly(&env, bond_id, report_id, report.carbon_sequestered)?
+            .is_some()
+        {
+            return Err(BondError::PerformanceFlagged);
+        }
 
         let existing: Option<PeriodInfo> = env
             .storage()
@@ -919,7 +920,9 @@ impl CouponEngine {
     /// Issue #186: whether an out-of-bound performance update is currently
     /// pausing coupon distribution for this bond.
     pub fn is_performance_flagged(env: Env, bond_id: u64) -> bool {
-        env.storage().instance().has(&DataKey::PerformanceFlag(bond_id))
+        env.storage()
+            .instance()
+            .has(&DataKey::PerformanceFlag(bond_id))
     }
 
     /// Issue #186: details of the active performance flag, if any.
@@ -955,19 +958,65 @@ impl CouponEngine {
 
         require_admin(&env, &caller)?;
 
-        if !env.storage().instance().has(&DataKey::PerformanceFlag(bond_id)) {
+        if !env
+            .storage()
+            .instance()
+            .has(&DataKey::PerformanceFlag(bond_id))
+        {
             return Err(BondError::BondNotFound);
         }
 
         env.storage()
             .instance()
             .remove(&DataKey::PerformanceFlag(bond_id));
-        env.events().publish(
-            (Symbol::new(&env, "performance_unflagged"),),
-            (bond_id,),
-        );
+        env.events()
+            .publish((Symbol::new(&env, "performance_unflagged"),), (bond_id,));
 
         Ok(())
+    }
+
+    /// Issue #186: persist the performance flag for a Verified report of this
+    /// bond whose value breaks the rate-of-change bounds, pausing coupon
+    /// distribution until `clear_performance_flag`.
+    ///
+    /// `distribute_coupon_batch` rejects such a report with
+    /// `PerformanceFlagged`, but a failed call rolls back its writes, so the
+    /// flag is recorded here in a call that succeeds. Callable by anyone: it only
+    /// stores a flag when the on-chain check itself finds an anomaly. Returns
+    /// whether the bond is flagged afterwards.
+    pub fn flag_performance_anomaly(
+        env: Env,
+        bond_id: u64,
+        report_id: u64,
+    ) -> Result<bool, BondError> {
+        if env
+            .storage()
+            .instance()
+            .has(&DataKey::PerformanceFlag(bond_id))
+        {
+            return Ok(true);
+        }
+
+        let report = load_bond_report(&env, bond_id, report_id)?;
+        let flag = match detect_performance_anomaly(
+            &env,
+            bond_id,
+            report_id,
+            report.carbon_sequestered,
+        )? {
+            Some(flag) => flag,
+            None => return Ok(false),
+        };
+
+        env.storage()
+            .instance()
+            .set(&DataKey::PerformanceFlag(bond_id), &flag);
+        env.events().publish(
+            (Symbol::new(&env, "performance_flagged"),),
+            (bond_id, report_id),
+        );
+
+        Ok(true)
     }
 
     // ── Migration window (issue #188) ────────────────────────────────────────
@@ -1023,10 +1072,8 @@ impl CouponEngine {
         env.storage()
             .instance()
             .set(&DataKey::MigrationWindow(bond_id), &window);
-        env.events().publish(
-            (Symbol::new(&env, "migration_started"),),
-            (bond_id,),
-        );
+        env.events()
+            .publish((Symbol::new(&env, "migration_started"),), (bond_id,));
 
         Ok(window)
     }
@@ -1060,10 +1107,8 @@ impl CouponEngine {
         env.storage()
             .instance()
             .remove(&DataKey::MigrationWindow(bond_id));
-        env.events().publish(
-            (Symbol::new(&env, "migration_finalized"),),
-            (bond_id,),
-        );
+        env.events()
+            .publish((Symbol::new(&env, "migration_finalized"),), (bond_id,));
 
         Ok(())
     }
@@ -1115,10 +1160,8 @@ impl CouponEngine {
         env.storage()
             .instance()
             .remove(&DataKey::MigrationWindow(bond_id));
-        env.events().publish(
-            (Symbol::new(&env, "migration_rolled_back"),),
-            (bond_id,),
-        );
+        env.events()
+            .publish((Symbol::new(&env, "migration_rolled_back"),), (bond_id,));
 
         Ok(window)
     }
@@ -1233,40 +1276,43 @@ fn checked_ratio(value: i128, multiplier: i128, divisor: i128) -> Result<i128, B
 /// Issue #188: coupon writes for a bond with an open migration window are
 /// paused so in-flight state cannot be mutated mid-cutover.
 fn require_no_migration_window(env: &Env, bond_id: u64) -> Result<(), BondError> {
-    if env.storage().instance().has(&DataKey::MigrationWindow(bond_id)) {
+    if env
+        .storage()
+        .instance()
+        .has(&DataKey::MigrationWindow(bond_id))
+    {
         return Err(BondError::MigrationInProgress);
     }
     Ok(())
 }
 
-
 /// Issue #186: bound a report's performance against the trailing history.
 ///
 /// The first accepted observation is the baseline (nothing to compare yet).
 /// Afterwards, an increase beyond `MAX_PERFORMANCE_INCREASE_BPS` or a drop
-/// beyond `MAX_PERFORMANCE_DECREASE_BPS` sets a `PerformanceFlag` — which
-/// pauses coupon distribution for the bond until an admin clears it after
-/// dispute resolution — and the update is rejected, never silently clamped.
-fn validate_performance_update(
+/// beyond `MAX_PERFORMANCE_DECREASE_BPS` is an anomaly: the returned
+/// `PerformanceFlag` describes it. This is a pure check — a failed Soroban call
+/// rolls back its writes, so the flag is persisted separately by
+/// `flag_performance_anomaly`.
+fn detect_performance_anomaly(
     env: &Env,
     bond_id: u64,
     report_id: u64,
-    period_index: u32,
     carbon_sequestered: i128,
-) -> Result<(), BondError> {
+) -> Result<Option<PerformanceFlag>, BondError> {
     let history: Vec<PerformanceRecord> = env
         .storage()
         .instance()
         .get(&DataKey::PerformanceHistory(bond_id))
         .unwrap_or(vec![env]);
     let previous = match history.len() {
-        0 => return Ok(()), // no history yet: this observation is the baseline
+        0 => return Ok(None), // no history yet: this observation is the baseline
         len => history.get(len - 1).ok_or(BondError::Overflow)?,
     };
 
     if previous.carbon_sequestered <= 0 {
         // A non-positive baseline cannot bound a ratio; accept the update.
-        return Ok(());
+        return Ok(None);
     }
 
     let reason = if carbon_sequestered > previous.carbon_sequestered {
@@ -1277,7 +1323,7 @@ fn validate_performance_update(
             .checked_div(previous.carbon_sequestered)
             .ok_or(BondError::Overflow)?;
         if increase_bps <= MAX_PERFORMANCE_INCREASE_BPS {
-            return Ok(());
+            return Ok(None);
         }
         PerformanceAnomaly::Spike
     } else if carbon_sequestered < previous.carbon_sequestered {
@@ -1288,29 +1334,47 @@ fn validate_performance_update(
             .checked_div(previous.carbon_sequestered)
             .ok_or(BondError::Overflow)?;
         if drop_bps <= MAX_PERFORMANCE_DECREASE_BPS {
-            return Ok(());
+            return Ok(None);
         }
         PerformanceAnomaly::Drop
     } else {
-        return Ok(());
+        return Ok(None);
     };
 
-    env.storage().instance().set(
-        &DataKey::PerformanceFlag(bond_id),
-        &PerformanceFlag {
-            report_id,
-            reason,
-            previous_value: previous.carbon_sequestered,
-            reported_value: carbon_sequestered,
-            flagged_at: env.ledger().timestamp(),
-        },
-    );
-    env.events().publish(
-        (Symbol::new(&env, "performance_flagged"),),
-        (bond_id, report_id),
-    );
+    Ok(Some(PerformanceFlag {
+        report_id,
+        reason,
+        previous_value: previous.carbon_sequestered,
+        reported_value: carbon_sequestered,
+        flagged_at: env.ledger().timestamp(),
+    }))
+}
 
-    Err(BondError::PerformanceFlagged)
+/// Issue #186: load a report through the oracle consumer and require that it is
+/// Verified and belongs to the bond's project.
+fn load_bond_report(env: &Env, bond_id: u64, report_id: u64) -> Result<Report, BondError> {
+    let project_id: BytesN<32> = env
+        .storage()
+        .instance()
+        .get(&DataKey::BondProject(bond_id))
+        .ok_or(BondError::BondNotFound)?;
+    let oracle_consumer: Address = env
+        .storage()
+        .instance()
+        .get(&DataKey::OracleConsumerAddress)
+        .ok_or(BondError::NotInitialized)?;
+    let report: Report = env.invoke_contract(
+        &oracle_consumer,
+        &Symbol::new(env, "get_report"),
+        vec![env, report_id.into_val(env)],
+    );
+    if report.status != ReportStatus::Verified {
+        return Err(BondError::ReportNotVerified);
+    }
+    if report.project_id != project_id {
+        return Err(BondError::BondNotFound);
+    }
+    Ok(report)
 }
 
 /// Issue #186: append an accepted observation to the trailing history,
@@ -2564,7 +2628,10 @@ mod test {
             Err(Ok(BondError::PerformanceFlagged))
         );
 
-        // The flag pauses every subsequent distribution attempt.
+        // The rejected call rolled back, so the flag is recorded separately;
+        // it pauses every subsequent distribution attempt.
+        assert!(!t.client.is_performance_flagged(&bond_id));
+        assert!(t.client.flag_performance_anomaly(&bond_id, &spike_report));
         assert!(t.client.is_performance_flagged(&bond_id));
         let flag = t.client.get_performance_flag(&bond_id).unwrap();
         assert_eq!(flag.reason, PerformanceAnomaly::Spike);
@@ -2572,7 +2639,7 @@ mod test {
         assert_eq!(flag.reported_value, 300_000);
         assert_eq!(
             t.client
-                .try_distribute_coupon(&t.admin, &bond_id, &1, &holders, &spike_report, &3),
+                .try_distribute_coupon(&t.admin, &bond_id, &1, &holders, &spike_report, &2),
             Err(Ok(BondError::PerformanceFlagged))
         );
 
@@ -2581,7 +2648,7 @@ mod test {
 
         // After dispute resolution an admin clears the flag and a corrected
         // report (within bounds) distributes normally.
-        t.client.clear_performance_flag(&t.admin, &bond_id, &4);
+        t.client.clear_performance_flag(&t.admin, &bond_id, &2);
         assert!(!t.client.is_performance_flagged(&bond_id));
 
         let corrected_report = submit_verified_report_with_period(
@@ -2595,7 +2662,7 @@ mod test {
             3_000,
         );
         t.client
-            .distribute_coupon(&t.admin, &bond_id, &1, &holders, &corrected_report, &5);
+            .distribute_coupon(&t.admin, &bond_id, &1, &holders, &corrected_report, &3);
 
         let history = t.client.get_performance_history(&bond_id);
         assert_eq!(history.len(), 2);
@@ -2695,6 +2762,7 @@ mod test {
             Err(Ok(BondError::PerformanceFlagged))
         );
 
+        assert!(t.client.flag_performance_anomaly(&bond_id, &drop_report));
         let flag = t.client.get_performance_flag(&bond_id).unwrap();
         assert_eq!(flag.reason, PerformanceAnomaly::Drop);
         assert_eq!(flag.reported_value, 3_000);
@@ -2734,10 +2802,7 @@ mod test {
             &0,
         );
         oc.verify_report(&t.admin, &report_id, &2);
-        assert_eq!(
-            oc.get_verification_count(&report_id),
-            1
-        );
+        assert_eq!(oc.get_verification_count(&report_id), 1);
 
         let holders = vec![&t._env, holder.clone()];
         assert_eq!(
@@ -2746,18 +2811,23 @@ mod test {
             Err(Ok(BondError::InsufficientAttestations))
         );
 
-        // A second independent verifier restores eligibility.
-        let second_verifier = Address::generate(&t._env);
-        oc.register_provider(&t.admin, &second_verifier, &Symbol::new(&t._env, "satellite"), &3);
-        oc.add_stake(
-            &second_verifier,
-            &nbbs_oracle_consumer::DEFAULT_MIN_VERIFIER_STAKE,
-            &0,
+        // A Verified report accepts no further attestations, so eligibility
+        // comes from a report attested by two independent verifiers.
+        oc.set_signature_threshold(&t.admin, &2, &3);
+        let attested_report = submit_verified_report_with_period(
+            &t._env,
+            &t,
+            &project_id,
+            100_000,
+            BiodiversityMetrics::Absent,
+            4,
+            2_000,
+            3_000,
         );
-        oc.verify_report(&second_verifier, &report_id, &1);
+        assert_eq!(oc.get_verification_count(&attested_report), 2);
 
         t.client
-            .distribute_coupon(&t.admin, &bond_id, &0, &holders, &report_id, &2);
+            .distribute_coupon(&t.admin, &bond_id, &0, &holders, &attested_report, &1);
     }
 
     /// Issue #186: only the admin can clear a performance flag.
@@ -2870,7 +2940,10 @@ mod test {
         assert!(t.client.get_migration_window(&bond_id).is_none());
 
         // In-flight state was not lost and is fully usable after rollback.
-        assert_eq!(t.client.get_undistributed_total(&bond_id), undistributed_before);
+        assert_eq!(
+            t.client.get_undistributed_total(&bond_id),
+            undistributed_before
+        );
         assert_eq!(
             t.client.claimable_credits(&bond_id, &holder),
             claimable_before
@@ -3426,9 +3499,13 @@ mod test {
             #[test]
             fn multi_period_conserves_credits(
                 carbon_0 in 0i128..1_000_000i128,
-                carbon_1 in 0i128..1_000_000i128,
+                // Period 1 stays within the #186 rate-of-change bounds
+                // (-90%..+100%) so the conservation property is exercised
+                // rather than the anomaly flag; rounding up keeps the floor.
+                carbon_1_pct in 10i128..=200i128,
                 balances in proptest::collection::vec(1i128..10_000i128, 1..4),
             ) {
+                let carbon_1 = (carbon_0 * carbon_1_pct + 99) / 100;
                 let env = Env::default();
                 env.mock_all_auths();
 

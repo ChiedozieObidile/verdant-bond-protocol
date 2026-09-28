@@ -16,6 +16,9 @@ export enum StableErrorCode {
   BOND_INVALID_SUPPLY = 'BOND_INVALID_SUPPLY',
   BOND_REDEMPTION_UNDERFUNDED = 'BOND_REDEMPTION_UNDERFUNDED',
   BOND_INCOMPATIBLE_METHODOLOGY_CREDIT_TYPE = 'BOND_INCOMPATIBLE_METHODOLOGY_CREDIT_TYPE',
+  BOND_PERFORMANCE_FLAGGED = 'BOND_PERFORMANCE_FLAGGED',
+  BOND_INSUFFICIENT_ATTESTATIONS = 'BOND_INSUFFICIENT_ATTESTATIONS',
+  BOND_MIGRATION_IN_PROGRESS = 'BOND_MIGRATION_IN_PROGRESS',
 
   // Oracle Errors
   ORACLE_NOT_INITIALIZED = 'ORACLE_NOT_INITIALIZED',
@@ -111,6 +114,9 @@ export const ERROR_MAPPINGS: Record<string, Record<number, { code: StableErrorCo
     12: { code: StableErrorCode.BOND_INVALID_SUPPLY, message: 'Invalid supply bounds' },
     13: { code: StableErrorCode.BOND_REDEMPTION_UNDERFUNDED, message: 'Bond redemption pool is underfunded' },
     14: { code: StableErrorCode.BOND_INCOMPATIBLE_METHODOLOGY_CREDIT_TYPE, message: 'Incompatible methodology for credit type' },
+    15: { code: StableErrorCode.BOND_PERFORMANCE_FLAGGED, message: 'Coupon distribution is paused: performance change is outside the allowed bounds' },
+    16: { code: StableErrorCode.BOND_INSUFFICIENT_ATTESTATIONS, message: 'Oracle report has too few independent attestations' },
+    17: { code: StableErrorCode.BOND_MIGRATION_IN_PROGRESS, message: 'Coupon operations are paused during a migration' },
   },
   ORACLE: {
     1: { code: StableErrorCode.ORACLE_NOT_INITIALIZED, message: 'Oracle contract is not initialized' },

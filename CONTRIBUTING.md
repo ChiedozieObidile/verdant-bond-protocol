@@ -209,9 +209,12 @@ Mutation testing introduces controlled faults (mutants) into the codebase to ver
 
 ```bash
 cd api
-npm run mutate     # Run stryker mutation testing
+npm run mutate     # Run Stryker mutation testing
 npm run test:mutate # Run with threshold check (fails if score < 50%)
 ```
+
+Mutation testing runs locally, not in CI: the critical modules below produce
+about 2,400 mutants, which takes hours. Run it before merging changes to them.
 
 The mutation testing configuration is in `api/stryker-config.json`. Critical modules monitored:
 - Financial math: `api/src/bonds/`, `api/src/oracle/`

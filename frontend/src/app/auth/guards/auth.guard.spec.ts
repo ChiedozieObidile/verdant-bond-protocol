@@ -17,8 +17,9 @@ describe('route guards (issue #168)', () => {
 
   const stateFor = (url: string) => ({ url }) as RouterStateSnapshot;
 
+  // Both guards decide synchronously; narrow Angular's MaybeAsync<GuardResult>.
   const run = (guard: typeof authGuard, url: string) =>
-    TestBed.runInInjectionContext(() => guard({} as never, stateFor(url)));
+    TestBed.runInInjectionContext(() => guard({} as never, stateFor(url))) as boolean | UrlTree;
 
   beforeEach(() => {
     TestBed.configureTestingModule({

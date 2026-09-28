@@ -41,6 +41,7 @@ describe('PartialFailureService (#266)', () => {
       expect(failure.metadata).toEqual({
         walletAddress: 'GUSER',
         passphrase: '[redacted]',
+        privateKey: '[redacted]',
         apiToken: '[redacted]',
         nested: { seedPhrase: '[redacted]', ledger: 4_000 },
       });

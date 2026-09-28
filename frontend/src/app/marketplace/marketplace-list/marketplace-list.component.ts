@@ -280,7 +280,6 @@ export class MarketplaceListComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   readonly authService = inject(AuthService);
   readonly walletService = inject(WalletService);
-  private readonly pendingTx = inject(PendingTransactionsService);
 
   readonly orders = signal<Order[]>([]);
   readonly bonds = signal<Bond[]>([]);
@@ -409,7 +408,10 @@ export class MarketplaceListComponent implements OnInit, OnDestroy {
     this.error.set('');
     // defer re-invokes the API call on every (re)subscription, so retries issue a
     // fresh request with a fresh cache-busting param instead of reusing a stale one.
-    return defer(() => this.apiService.getOrders({ bondId: this.filterBondId() ?? undefined, status: this.filterStatus() === 'All' ? undefined : this.filterStatus() }, forceRefresh)).pipe(
+    return defer(() => {
+      const status = this.filterStatus();
+      return this.apiService.getOrders({ bondId: this.filterBondId() ?? undefined, status: status === 'All' ? undefined : status }, forceRefresh);
+    }).pipe(
       retry({
         count: ORDERS_RETRY_COUNT,
         delay: (error, attempt) =>
