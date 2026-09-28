@@ -101,6 +101,7 @@ export const ROUTE_AUTHORIZATION_MATRIX: RouteAuthEntry[] = [
   { controller: OracleController, method: 'getProviderStats', httpMethod: 'GET', path: 'oracle/stats/:providerAddress', guards: [], role: 'public', mutation: false },
   { controller: OracleController, method: 'staleness', httpMethod: 'GET', path: 'oracle/monitoring/staleness', guards: [], role: 'public', mutation: false },
   { controller: OracleController, method: 'anomalies', httpMethod: 'GET', path: 'oracle/monitoring/anomalies', guards: [], role: 'public', mutation: false },
+  { controller: OracleController, method: 'getProjectStalenessState', httpMethod: 'GET', path: 'oracle/staleness/:projectId', guards: [], role: 'public', mutation: false },
   { controller: OracleController, method: 'listIncidents', httpMethod: 'GET', path: 'oracle/incidents', guards: [JwtAuthGuard, PermissionsGuard], role: 'permissioned', permissions: [Permission.MANAGE_INCIDENTS], mutation: false },
   { controller: OracleController, method: 'acknowledgeIncident', httpMethod: 'POST', path: 'oracle/incidents/:id/acknowledge', guards: [JwtAuthGuard, PermissionsGuard, IntentGuard], role: 'permissioned', permissions: [Permission.MANAGE_INCIDENTS], mutation: true },
   { controller: OracleController, method: 'resolveIncident', httpMethod: 'POST', path: 'oracle/incidents/:id/resolve', guards: [JwtAuthGuard, PermissionsGuard, IntentGuard], role: 'permissioned', permissions: [Permission.MANAGE_INCIDENTS], mutation: true },

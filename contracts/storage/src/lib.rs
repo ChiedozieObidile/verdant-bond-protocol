@@ -561,7 +561,10 @@ pub fn generate_storage_fixtures(
     );
     oracle_consumer.insert(
         "MinimumQuorum".to_string(),
-        fx("MinimumQuorum", encode(env, OracleConsumerKey::MinimumQuorum)),
+        fx(
+            "MinimumQuorum",
+            encode(env, OracleConsumerKey::MinimumQuorum),
+        ),
     );
     oracle_consumer.insert(
         "MinimumDisputeBond".to_string(),

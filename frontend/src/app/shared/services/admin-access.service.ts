@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { StrKey } from '@stellar/stellar-sdk';
+import { StrKey } from '@stellar/stellar-base';
 import { WalletService } from '../../auth/wallet.service';
 import { AuthService } from '../../auth/auth.service';
 import { environment } from '../../../environments/environment';

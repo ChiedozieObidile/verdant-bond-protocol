@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RecoveryService } from './recovery.service';
 import { RecoveryOperationStatus, RecoveryStepDefinition } from './recovery.interface';
 
@@ -7,7 +8,7 @@ describe('RecoveryService (#261)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RecoveryService],
+      providers: [RecoveryService, NotificationsService],
     }).compile();
     service = module.get<RecoveryService>(RecoveryService);
   });

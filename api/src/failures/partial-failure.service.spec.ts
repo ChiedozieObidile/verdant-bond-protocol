@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PartialFailureService } from './partial-failure.service';
 import { DEFAULT_STALE_AFTER_MS } from './partial-failure.interface';
 
@@ -10,7 +11,7 @@ describe('PartialFailureService (#266)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [PartialFailureService],
+      providers: [PartialFailureService, NotificationsService],
     }).compile();
     service = module.get<PartialFailureService>(PartialFailureService);
   });

@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Keypair, StrKey } from '@stellar/stellar-sdk';
+import { Keypair, StrKey } from '@stellar/stellar-base';
 import { environment } from '../../../environments/environment';
 import { AdminAccessService } from './admin-access.service';
 

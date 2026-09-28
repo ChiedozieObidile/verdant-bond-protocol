@@ -26,8 +26,8 @@ describe('NotificationsService', () => {
 
     const notif1 = service.createNotification(data);
     expect(notif1).toBeDefined();
-    expect(notif1.id).toBeDefined();
-    expect(notif1.read).toBeFalsy();
+    expect(notif1!.id).toBeDefined();
+    expect(notif1!.read).toBeFalsy();
 
     const notif2 = service.createNotification(data);
     expect(notif2).toBeNull(); // Deduplicated
@@ -41,9 +41,9 @@ describe('NotificationsService', () => {
       eventId: 'evt-456'
     });
 
-    expect(notif.read).toBeFalsy();
-    service.markAsRead('user1', notif.id);
-    const fetched = service.getNotifications('user1').find(n => n.id === notif.id);
-    expect(fetched.read).toBeTruthy();
+    expect(notif!.read).toBeFalsy();
+    service.markAsRead('user1', notif!.id);
+    const fetched = service.getNotifications('user1').find(n => n.id === notif!.id);
+    expect(fetched!.read).toBeTruthy();
   });
 });

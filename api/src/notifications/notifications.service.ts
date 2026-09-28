@@ -36,7 +36,7 @@ export class NotificationsService {
     return this.notifications.filter(n => n.userId === userId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  markAsRead(userId: string, id: string): Notification {
+  markAsRead(userId: string, id: string): Notification | undefined {
     const notification = this.notifications.find(n => n.id === id && n.userId === userId);
     if (notification) {
       notification.read = true;
