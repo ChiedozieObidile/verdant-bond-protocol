@@ -41,6 +41,6 @@ export class NotificationsService {
     if (notification) {
       notification.read = true;
     }
-    return notification;
+    return notification ?? null;
   }
 }
